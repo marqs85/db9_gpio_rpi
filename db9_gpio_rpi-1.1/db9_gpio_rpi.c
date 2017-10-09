@@ -2,6 +2,9 @@
  *  Copyright (c) 2013	Markus Hiienkari
  *
  *  Based on the db9 driver by Vojtech Pavlik
+ *
+ *  PC Engine/TurboGrafx-16 pad support by Mattias Wikstrom
+ *
  */
 
 /*
@@ -118,7 +121,8 @@ MODULE_PARM_DESC(map, "Describes the set of pad connections (<PORT1>,<PORT2>)");
 #define DB9_GENESIS6_PAD	0x06
 #define DB9_SATURN_PAD		0x07
 #define DB9_CD32_PAD		0x08
-#define DB9_MAX_PAD			0x09
+#define DB9_PCENGINE_PAD	0x09
+#define DB9_MAX_PAD		0x0A
 
 
 /* Button map */
@@ -166,17 +170,19 @@ static const short db9_genesis_btn[] = { BTN_START, BTN_A, BTN_B, BTN_C, BTN_X, 
 static const short db9_saturn_btn[] = { BTN_A, BTN_B, BTN_C, BTN_X, BTN_Y, BTN_Z, BTN_TL, BTN_TR, BTN_START };
 static const short db9_cd32_btn[] = { BTN_A, BTN_B, BTN_X, BTN_Y, BTN_TR, BTN_TL, BTN_START };
 static const short db9_abs[] = { ABS_X, ABS_Y, ABS_RX, ABS_RY, ABS_RZ, ABS_Z, ABS_HAT0X, ABS_HAT0Y, ABS_HAT1X, ABS_HAT1Y };
+static const short db9_pcengine_btn[] = { BTN_A, BTN_B, BTN_SELECT, BTN_START };
 
 static const struct db9_mode_data db9_modes[] = {
-	{ NULL,					 				NULL,		  0,  0,  0,  0 },
-	{ "Multisystem joystick",			 db9_multi_btn,	  1,  2,  5,  0 },
-	{ "Multisystem joystick (2 fire)",	 db9_multi_btn,	  2,  2,  6,  0 },
-	{ "Multisystem joystick (3 fire)",	 db9_multi_btn,	  3,  2,  7,  0 },
-	{ "Genesis pad",					 db9_genesis_btn, 4,  2,  6,  1 },
-	{ "Genesis 5 pad",					 db9_genesis_btn, 6,  2,  6,  1 },
-	{ "Genesis 6 pad",					 db9_genesis_btn, 8,  2,  6,  1 },
-	{ "Saturn pad",						 db9_saturn_btn,  9,  7,  4,  2 },
-	{ "Amiga CD-32 pad",				 db9_saturn_btn,  7,  2,  5,  2 },
+	{ NULL,						NULL,		  0,  0,  0,  0 },
+	{ "Multisystem joystick",			db9_multi_btn,	  1,  2,  5,  0 },
+	{ "Multisystem joystick (2 fire)",		db9_multi_btn,	  2,  2,  6,  0 },
+	{ "Multisystem joystick (3 fire)",		db9_multi_btn,	  3,  2,  7,  0 },
+	{ "Genesis pad",				db9_genesis_btn,  4,  2,  6,  1 },
+	{ "Genesis 5 pad",				db9_genesis_btn,  6,  2,  6,  1 },
+	{ "Genesis 6 pad",				db9_genesis_btn,  8,  2,  6,  1 },
+	{ "Saturn pad",					db9_saturn_btn,   9,  7,  4,  2 },
+	{ "Amiga CD-32 pad",				db9_saturn_btn,   7,  2,  5,  2 },
+	{ "PC Engine/TurboGrafx-16 pad",		db9_pcengine_btn, 4,  2,  4,  2 },
 };
 
 /*
@@ -518,6 +524,31 @@ static void db9_timer(unsigned long private)
 					GPIO_SET = psb[i][DB9_SELECT1];
 					udelay(1);
 				}
+				break;
+
+			case DB9_PCENGINE_PAD:
+
+				/* toggle enable line (active-low) to increment the turbo fire counter. */
+				GPIO_SET = psb[i][DB9_SELECT0];
+				udelay(DB9_GENESIS_DELAY);
+				GPIO_CLR = psb[i][DB9_SELECT0];
+				udelay(DB9_GENESIS_DELAY);
+
+				GPIO_SET = psb[i][DB9_SELECT1];
+				udelay(DB9_GENESIS_DELAY);
+				data = GPIO_STATUS;
+
+				input_report_abs(dev, ABS_X, (data & psb[i][DB9_RIGHT] ? 0 : 1) - (data & psb[i][DB9_LEFT] ? 0 : 1));
+				input_report_abs(dev, ABS_Y, (data & psb[i][DB9_UP] ? 0 : 1) - (data & psb[i][DB9_DOWN] ? 0 : 1));
+
+				GPIO_CLR = psb[i][DB9_SELECT1];
+				udelay(DB9_GENESIS_DELAY);
+				data = GPIO_STATUS;
+
+				input_report_key(dev, BTN_A,     ~data & psb[i][DB9_UP]);
+				input_report_key(dev, BTN_B,     ~data & psb[i][DB9_RIGHT]);
+				input_report_key(dev, BTN_SELECT, ~data & psb[i][DB9_DOWN]);
+				input_report_key(dev, BTN_START, ~data & psb[i][DB9_LEFT]);
 				break;
 
 			default:
