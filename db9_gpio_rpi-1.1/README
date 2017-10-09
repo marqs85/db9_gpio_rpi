@@ -9,20 +9,24 @@ Pi's GPIO. Up to 2 joysticks of following types can be used with the driver:
     -Sega Mega Drive (Genesis) gamepads
     -Sega Saturn controllers (Note: custom connector instead of db9)
     -Amiga CD32 gamepads
-    -PC Engine/TurboGrafx-16 gamepads (2+2 buttons, turbo fire optional)
+    -PC Engine/TurboGrafx-16 gamepads (2+2 buttons, turbo fire optional)*
 
 The driver is based on db9 kernel module for parport (see
 linux/Documentation/input/joystick-parport.txt), but uses different pinout and
 parameters. No warranty - use at your own risk.
 
+* Having support for PC Engine/TurboGrafx-16 controllers in this driver is not as
+  out of place is it first may seem. Despite using a DIN-8 connector instead 
+  of the titular DB9, the PC Engine/TurboGrafx-16 controller is internally very
+  similar to the Mega Drive/Genesis controllers.
+
 
 2. Required hardware
 
 -Raspberry Pi and supported joysticks
--One DB9 connector (male) per joystick, and wires (e.g. a ribbon cable)
-or:
--One mini DIN-8 (female) connector in the case of the PC Engine,
- or a full sized connector in the case of the TurboGrafx-16
+-One DB9* connector (male) per joystick, and wires (e.g. a ribbon cable)
+
+* PC Engine: Mini DIN-8 (female), TurboGrafx-16: DIN-8 (female)
 
 
 3. Connecting the joysticks
