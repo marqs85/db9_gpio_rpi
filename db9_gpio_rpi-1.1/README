@@ -9,6 +9,7 @@ Pi's GPIO. Up to 2 joysticks of following types can be used with the driver:
     -Sega Mega Drive (Genesis) gamepads
     -Sega Saturn controllers (Note: custom connector instead of db9)
     -Amiga CD32 gamepads
+    -PC Engine/TurboGrafx-16 gamepads (2+2 buttons, turbo fire optional)
 
 The driver is based on db9 kernel module for parport (see
 linux/Documentation/input/joystick-parport.txt), but uses different pinout and
@@ -19,6 +20,9 @@ parameters. No warranty - use at your own risk.
 
 -Raspberry Pi and supported joysticks
 -One DB9 connector (male) per joystick, and wires (e.g. a ribbon cable)
+or:
+-One mini DIN-8 (female) connector in the case of the PC Engine,
+ or a full sized connector in the case of the TurboGrafx-16
 
 
 3. Connecting the joysticks
@@ -134,14 +138,30 @@ GND            ====            8 (Ground)
 FIRE1          <---            9 (Serial data)
 
 
-4. Configuring the driver
+4. PC Engine/TurboGrafx-16 gamepads
+
+The original pad and later turbo fire versions are supported. The Avenue6 pad
+is not supported.
+
+GPIO name      Direction       DIN8 pin + name
+3.3V           ====            1 (Power)
+UP             <---            2 (Up/I)
+RIGHT          <---            3 (Right/II)
+DOWN           <---            4 (Down/Select)
+LEFT           <---            5 (Left/Run)
+SELECT0        --->            7 (Enable)
+SELECT1        --->            6 (Data Select)
+GND            ====            8 (Ground)
+
+
+5. Configuring the driver
 
 The driver is loaded and unloaded with command "modprobe" (as root or with
 sudo). It is recommended to use "--first-time" -option with modprobe since the
 default output is not very verbose (see "man modprobe").
 
 
-4.1 Configuring the joysticks
+5.1 Configuring the joysticks
 
 The driver is loaded in the following way:
 
@@ -159,6 +179,7 @@ corresponding port, which may be one of the following:
     6 = Mega Dribe (Genesis) 6-button pad (6+2 buttons)
     7 = Sega Saturn controller (any type)
     8 = Amiga CD32 gamepad
+    9 = PC Engine/TurboGrafx-16 gamepad (2+2 buttons)
 
 For example, if a standard Mega Drive pad is connected to PORT1 and a Saturn
 controller to PORT2, the command would be
@@ -178,12 +199,12 @@ configure the driver to be loaded on startup, add the driver name and joystick
 map to /etc/modules (e.g. "db9_gpio_rpi map=4,7")
 
 
-4.2 Testing the joysticks
+5.2 Testing the joysticks
 # apt-get install joystick
 # jstest /dev/input/jsX
     where X corresponds to the pad index (0-1)
 
 
-5. More information
+6. More information
 -http://www.raspberrypi.org/phpBB3/viewtopic.php?f=78&t=15787
 -https://github.com/RetroPie/RetroPie-Setup/wiki/GPIO-Modules#db9_gpio_rpi
