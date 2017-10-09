@@ -142,7 +142,7 @@ GND            ====            8 (Ground)
 FIRE1          <---            9 (Serial data)
 
 
-4. PC Engine/TurboGrafx-16 gamepads
+3.6 PC Engine/TurboGrafx-16 gamepads
 
 The original pad and later turbo fire versions are supported. The Avenue6 pad
 is not supported.
@@ -158,14 +158,14 @@ SELECT1        --->            6 (Data Select)
 GND            ====            8 (Ground)
 
 
-5. Configuring the driver
+4. Configuring the driver
 
 The driver is loaded and unloaded with command "modprobe" (as root or with
 sudo). It is recommended to use "--first-time" -option with modprobe since the
 default output is not very verbose (see "man modprobe").
 
 
-5.1 Configuring the joysticks
+4.1 Configuring the joysticks
 
 The driver is loaded in the following way:
 
@@ -203,12 +203,12 @@ configure the driver to be loaded on startup, add the driver name and joystick
 map to /etc/modules (e.g. "db9_gpio_rpi map=4,7")
 
 
-5.2 Testing the joysticks
+4.2 Testing the joysticks
 # apt-get install joystick
 # jstest /dev/input/jsX
     where X corresponds to the pad index (0-1)
 
 
-6. More information
+5. More information
 -http://www.raspberrypi.org/phpBB3/viewtopic.php?f=78&t=15787
 -https://github.com/RetroPie/RetroPie-Setup/wiki/GPIO-Modules#db9_gpio_rpi
