@@ -37,6 +37,7 @@
 #include <linux/init.h>
 #include <linux/input.h>
 #include <linux/mutex.h>
+#include <linux/version.h>
 #include <linux/slab.h>
 #include <asm/io.h>
 
@@ -66,6 +67,10 @@ static volatile unsigned *gpio;
 #define OUT_GPIO(g) *(gpio+((g)/10)) |=  (1<<(((g)%10)*3))
 
 #define MAX_PORT_GPIO			7
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
+#define HAVE_TIMER_SETUP
+#endif
 
 enum pad_gpios {
 	PORT1_PIN1_GPIO = 4,
@@ -374,9 +379,16 @@ static void db9_saturn(int port, struct input_dev *dev)
 	return;
 }
 
+#ifdef HAVE_TIMER_SETUP
+static void db9_timer(struct timer_list *t)
+{
+	struct db9 *db9 = from_timer(db9, t, timer);
+#else
 static void db9_timer(unsigned long private)
 {
 	struct db9 *db9 = (void *) private;
+#endif
+
 	struct db9_pad *pad;
 	struct input_dev *dev;
 	int i;
@@ -687,7 +699,11 @@ static struct db9 __init *db9_probe(int *pads, int n_pads)
 	}
 
 	mutex_init(&db9->mutex);
-	setup_timer(&db9->timer, db9_timer, (long) db9);
+	#ifdef HAVE_TIMER_SETUP
+	timer_setup(&db9->timer, db9_timer, 0);
+	#else
+	setup_timer(&db9->timer, db9_timer, (long) db9)
+	#endif
 
 	for (i = 0; i < n_pads && i < DB9_MAX_DEVICES; i++) {
 		if (!pads[i])
