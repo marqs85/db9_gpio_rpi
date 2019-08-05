@@ -702,7 +702,7 @@ static struct db9 __init *db9_probe(int *pads, int n_pads)
 	#ifdef HAVE_TIMER_SETUP
 	timer_setup(&db9->timer, db9_timer, 0);
 	#else
-	setup_timer(&db9->timer, db9_timer, (long) db9)
+	setup_timer(&db9->timer, db9_timer, (long) db9);
 	#endif
 
 	for (i = 0; i < n_pads && i < DB9_MAX_DEVICES; i++) {
