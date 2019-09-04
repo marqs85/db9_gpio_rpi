@@ -36,6 +36,7 @@
 #include <linux/delay.h>
 #include <linux/init.h>
 #include <linux/input.h>
+#include <linux/of_device.h>
 #include <linux/mutex.h>
 #include <linux/version.h>
 #include <linux/slab.h>
@@ -50,11 +51,10 @@ MODULE_LICENSE("GPL");
 /* GPIO definitions */
 static volatile unsigned *gpio;
 
-#ifdef CONFIG_ARCH_MULTI_V7
-#define BCM2708_PERI_BASE 0x3F000000
-#else
-#define BCM2708_PERI_BASE 0x20000000
-#endif
+/* BCM board peripherals base address */
+static u32 db9_bcm2708_peri_base;
+
+#define BCM2708_PERI_BASE db9_bcm2708_peri_base
 
 #define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) /* GPIO controller */
 
@@ -190,6 +190,45 @@ static const struct db9_mode_data db9_modes[] = {
 	{ "PC Engine/TurboGrafx-16 pad",		db9_pcengine_btn, 4,  2,  4,  2 },
 };
 
+/**
+ * db9_bcm_peri_address_probe - Find the peripherals address for the
+ * running Raspberry Pi model. It needs a kernel with runtime Device-Tree
+ * overlay support.
+ *
+ * Based on the userland 'bcm_host' library code from
+ * https://github.com/raspberrypi/userland/blob/2549c149d8aa7f18ff201a1c0429cb26f9e2535a/host_applications/linux/libs/bcm_host/bcm_host.c#L150
+ *
+ * Reference: https://www.raspberrypi.org/documentation/hardware/raspberrypi/peripheral_addresses.md
+ *
+ * If any error occurs reading the device tree nodes/properties, then return 0.
+ */
+static u32 __init db9_bcm_peri_address_probe(void) {
+
+	char *path = "/soc";
+	struct device_node *dt_node;
+	u32 base_address = 1;
+
+	dt_node = of_find_node_by_path(path);
+	if (!dt_node) {
+		pr_err("failed to find device-tree node: %s\n", path);
+		return 0;
+	}
+
+	if (of_property_read_u32_index(dt_node, "ranges", 1, &base_address)) {
+		pr_err("failed to read range index 1\n");
+		return 0;
+	}
+
+	if (base_address == 0) {
+		if (of_property_read_u32_index(dt_node, "ranges", 2, &base_address)) {
+			pr_err("failed to read range index 2\n");
+			return 0;
+		}
+	}
+
+	return base_address == 1 ? 0x02000000 : base_address;
+}
+
 /*
  * Saturn controllers
  */
@@ -207,7 +246,7 @@ static void db9_saturn_write_sub(int port, unsigned char data)
 		GPIO_SET = psb[port][DB9_SELECT0];
 	else
 		GPIO_CLR = psb[port][DB9_SELECT0];
-	
+
 	if ((data >> 1) & 0x1)
 		GPIO_SET = psb[port][DB9_SELECT1];
 	else
@@ -372,7 +411,7 @@ static void db9_saturn(int port, struct input_dev *dev)
 	/* Info byte + max. 15 data bytes */
 	unsigned char data[16];
 	unsigned char id;
-	
+
 	id = db9_saturn_read_packet(port, data);
 	db9_saturn_report(id, data, dev);
 
@@ -614,7 +653,7 @@ static int __init db9_setup_pad(struct db9 *db9, int idx, int mode)
 		printk(KERN_ERR "db9.c: Bad device type %d\n", mode);
 		return -EINVAL;
 	}
-	
+
 	db9_mode = &db9_modes[mode];
 
 	pad->dev = input_dev = input_allocate_device();
@@ -634,12 +673,12 @@ static int __init db9_setup_pad(struct db9 *db9, int idx, int mode)
 	input_dev->id.vendor = 0x0002;
 	input_dev->id.product = mode;
 	input_dev->id.version = 0x0100;
-	
+
 	input_set_drvdata(input_dev, db9);
 
 	input_dev->open = db9_open;
 	input_dev->close = db9_close;
-	
+
 	input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
 	for (j = 0; j < db9_mode->n_buttons; j++)
 		set_bit(db9_mode->buttons[j], input_dev->keybit);
@@ -653,16 +692,16 @@ static int __init db9_setup_pad(struct db9 *db9, int idx, int mode)
 	err = input_register_device(input_dev);
 	if (err)
 		goto err_free_dev;
-		
+
 	/* Configure GPIO states */
 	for (i = 0; i < db9_mode->gpio_num_inputs; i++)
 		INP_GPIO(gpio_id[idx][i]);
-		
+
 	for (i = 0; i < db9_mode->gpio_num_outputs; i++) {
 		INP_GPIO(gpio_id[idx][MAX_PORT_GPIO - 1 - i]);
 		OUT_GPIO(gpio_id[idx][MAX_PORT_GPIO - 1 - i]);
 	}
-	
+
 	/* Activate pull-ups on inputs */
 	for (i = 0; i < db9_mode->gpio_num_inputs; i++)
 		gpio_pu_vec |= (1 << gpio_id[idx][i]);
@@ -673,7 +712,7 @@ static int __init db9_setup_pad(struct db9 *db9, int idx, int mode)
 	udelay(10);
 	*(gpio+37) = 0x00;
 	*(gpio+38) = 0x00;
-	
+
 	printk("PORT%d configured for %s\n", idx + 1, db9_mode->name);
 
 	return 0;
@@ -721,7 +760,7 @@ static struct db9 __init *db9_probe(int *pads, int n_pads)
 		err = -EINVAL;
 		goto err_free_db9;
 	}
-	
+
 	return db9;
 
 err_unreg_devs:
@@ -745,7 +784,7 @@ static void db9_remove(struct db9 *db9)
 			input_unregister_device(db9->pads[i].dev);
 
 		if (db9->pads[i].mode) {
- 			db9_mode = &db9_modes[db9->pads[i].mode];
+			db9_mode = &db9_modes[db9->pads[i].mode];
 
 			/* Disable pull-ups on inputs */
 			for (j = 0; j < db9_mode->gpio_num_inputs; j++)
@@ -769,11 +808,20 @@ static void db9_remove(struct db9 *db9)
 
 static int __init db9_init(void)
 {
+	/* Get the BCM2708 peripheral address base */
+	db9_bcm2708_peri_base = db9_bcm_peri_address_probe();
+	if (!db9_bcm2708_peri_base) {
+		pr_err("failed to find peripherals address base via device-tree\n");
+		return -ENODEV;
+	}
+
+	pr_info("peripherals address base at 0x%08x\n", BCM2708_PERI_BASE);
+
 	/* Set up gpio pointer for direct register access */
-   	if ((gpio = ioremap(GPIO_BASE, 0xB0)) == NULL) {
-   	   	pr_err("io remap failed\n");
-   	   	return -EBUSY;
-   	}   	
+	if ((gpio = ioremap(GPIO_BASE, 0xB0)) == NULL) {
+		pr_err("io remap failed\n");
+		return -EBUSY;
+	}
 
 	if (db9_cfg.nargs < 1) {
 		pr_err("at least one device must be specified\n");
@@ -791,7 +839,7 @@ static void __exit db9_exit(void)
 {
 	if (db9_base)
 		db9_remove(db9_base);
-			
+
 	iounmap(gpio);
 }
 
