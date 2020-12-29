@@ -66,6 +66,12 @@ static u32 db9_bcm2708_peri_base;
 #define INP_GPIO(g) *(gpio+((g)/10)) &= ~(7<<(((g)%10)*3))
 #define OUT_GPIO(g) *(gpio+((g)/10)) |=  (1<<(((g)%10)*3))
 
+/* 2711 has a different mechanism for pin pull-up/down/enable  */
+#define GPPUPPDN0                57        /* Pin pull-up/down for pins 15:0  */
+#define GPPUPPDN1                58        /* Pin pull-up/down for pins 31:16 */
+#define GPPUPPDN2                59        /* Pin pull-up/down for pins 47:32 */
+#define GPPUPPDN3                60        /* Pin pull-up/down for pins 57:48 */
+
 #define MAX_PORT_GPIO			7
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
@@ -703,15 +709,32 @@ static int __init db9_setup_pad(struct db9 *db9, int idx, int mode)
 	}
 
 	/* Activate pull-ups on inputs */
-	for (i = 0; i < db9_mode->gpio_num_inputs; i++)
-		gpio_pu_vec |= (1 << gpio_id[idx][i]);
+	if (1) // if BCM2711
+	{
+		for (i = 0; i < db9_mode->gpio_num_inputs; i++)
+		{
+			int gpiopin = gpio_id[idx][i];
+			int pullreg = GPPUPPDN0 + (gpiopin >> 4);
+			int pullshift = (gpiopin & 0xf) << 1;
+			unsigned int pullbits;
+			unsigned int pull = 2; //0=none, 1=pullup, 2=pulldown
+			pullbits = *(gpio + pullreg);
+			pullbits &= ~(3 << pullshift);
+			pullbits |= (pull << pullshift);
+			*(gpio + pullreg) = pullbits;
+		}
+	} else {
+		for (i = 0; i < db9_mode->gpio_num_inputs; i++)
+			gpio_pu_vec |= (1 << gpio_id[idx][i]);
 
-	*(gpio+37) = 0x02;
-	udelay(10);
-	*(gpio+38) = gpio_pu_vec;
-	udelay(10);
-	*(gpio+37) = 0x00;
-	*(gpio+38) = 0x00;
+		*(gpio+37) = 0x02;
+		udelay(10);
+		*(gpio+38) = gpio_pu_vec;
+		udelay(10);
+		*(gpio+37) = 0x00;
+		*(gpio+38) = 0x00;
+        }
+
 
 	printk("PORT%d configured for %s\n", idx + 1, db9_mode->name);
 
