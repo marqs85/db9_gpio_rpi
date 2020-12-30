@@ -717,7 +717,7 @@ static int __init db9_setup_pad(struct db9 *db9, int idx, int mode)
 			int pullreg = GPPUPPDN0 + (gpiopin >> 4);
 			int pullshift = (gpiopin & 0xf) << 1;
 			unsigned int pullbits;
-			unsigned int pull = 2; //0=none, 1=pullup, 2=pulldown
+			unsigned int pull = 1; //0 = none, 1 = pullup, 2 = pulldown
 			pullbits = *(gpio + pullreg);
 			pullbits &= ~(3 << pullshift);
 			pullbits |= (pull << pullshift);
