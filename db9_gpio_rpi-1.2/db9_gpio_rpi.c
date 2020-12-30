@@ -738,9 +738,9 @@ static int __init db9_setup_pad(struct db9 *db9, int idx, int mode)
 	/* Activate pull-ups on inputs */
 	if (db9_bcm_model == 2711)
 	{
+		pr_info("Using BCM2711 pullups\n");
 		for (i = 0; i < db9_mode->gpio_num_inputs; i++)
 		{
-			pr_info("Using BCM2711 pullups\n");
 			int gpiopin = gpio_id[idx][i];
 			int pullreg = GPPUPPDN0 + (gpiopin >> 4);
 			int pullshift = (gpiopin & 0xf) << 1;
