@@ -54,6 +54,8 @@ static volatile unsigned *gpio;
 /* BCM board peripherals base address */
 static u32 db9_bcm2708_peri_base;
 
+static u32 db9_bcm_model;
+
 #define BCM2708_PERI_BASE db9_bcm2708_peri_base
 
 #define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) /* GPIO controller */
@@ -233,6 +235,31 @@ static u32 __init db9_bcm_peri_address_probe(void) {
 	}
 
 	return base_address == 1 ? 0x02000000 : base_address;
+}
+
+static u32 __init db9_bcm_model_probe(void) {
+
+	char *path = "/";
+	struct device_node *dt_node;
+	const char *bcm  = NULL;
+	u32 model;
+
+	dt_node = of_find_node_by_path(path);
+	if (!dt_node) {
+		pr_err("failed to find device-tree node: %s\n", path);
+		return 0;
+	}
+
+	if (of_property_read_string_index(dt_node, "compatible", 1, &bcm)) {
+		pr_err("failed to read range index 1\n");
+		return 0;
+	}
+
+	pr_info("BCM model: %s\n", bcm);
+
+	sscanf(bcm, "brcm,bcm%d", &model);
+
+	return model;
 }
 
 /*
@@ -709,10 +736,11 @@ static int __init db9_setup_pad(struct db9 *db9, int idx, int mode)
 	}
 
 	/* Activate pull-ups on inputs */
-	if (1) // if BCM2711
+	if (db9_bcm_model == 2711)
 	{
 		for (i = 0; i < db9_mode->gpio_num_inputs; i++)
 		{
+			pr_info("Using BCM2711 pullups\n");
 			int gpiopin = gpio_id[idx][i];
 			int pullreg = GPPUPPDN0 + (gpiopin >> 4);
 			int pullshift = (gpiopin & 0xf) << 1;
@@ -810,7 +838,7 @@ static void db9_remove(struct db9 *db9)
 			db9_mode = &db9_modes[db9->pads[i].mode];
 
 			/* Disable pull-ups on inputs */
-			if (1) // if BCM2711
+			if (db9_bcm_model == 2711)
 			{
 				for (j = 0; j < db9_mode->gpio_num_inputs; j++)
 				{
