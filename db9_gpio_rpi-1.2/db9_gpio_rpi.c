@@ -810,15 +810,31 @@ static void db9_remove(struct db9 *db9)
 			db9_mode = &db9_modes[db9->pads[i].mode];
 
 			/* Disable pull-ups on inputs */
-			for (j = 0; j < db9_mode->gpio_num_inputs; j++)
-				gpio_pu_vec |= (1 << gpio_id[i][j]);
+			if (1) // if BCM2711
+			{
+				for (j = 0; j < db9_mode->gpio_num_inputs; j++)
+				{
+					int gpiopin = gpio_id[i][j];
+					int pullreg = GPPUPPDN0 + (gpiopin >> 4);
+					int pullshift = (gpiopin & 0xf) << 1;
+					unsigned int pullbits;
+					unsigned int pull = 0; //0 = none, 1 = pullup, 2 = pulldown
+					pullbits = *(gpio + pullreg);
+					pullbits &= ~(3 << pullshift);
+					pullbits |= (pull << pullshift);
+					*(gpio + pullreg) = pullbits;
+				}
+			} else {
+				for (j = 0; j < db9_mode->gpio_num_inputs; j++)
+					gpio_pu_vec |= (1 << gpio_id[i][j]);
 
-			*(gpio+37) = 0x00;
-			udelay(10);
-			*(gpio+38) = gpio_pu_vec;
-			udelay(10);
-			*(gpio+37) = 0x00;
-			*(gpio+38) = 0x00;
+				*(gpio+37) = 0x00;
+				udelay(10);
+				*(gpio+38) = gpio_pu_vec;
+				udelay(10);
+				*(gpio+37) = 0x00;
+				*(gpio+38) = 0x00;
+			}
 
 			/* Reset GPIO outputs to inputs */
 			for (j = 0; j < db9_mode->gpio_num_outputs; j++)
