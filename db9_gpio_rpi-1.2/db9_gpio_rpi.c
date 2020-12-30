@@ -877,6 +877,7 @@ static int __init db9_init(void)
 {
 	/* Get the BCM2708 peripheral address base */
 	db9_bcm2708_peri_base = db9_bcm_peri_address_probe();
+	db9_bcm_model = db9_bcm_model_probe();
 	if (!db9_bcm2708_peri_base) {
 		pr_err("failed to find peripherals address base via device-tree\n");
 		return -ENODEV;
