@@ -265,7 +265,7 @@ static u32 __init db9_bcm_model_probe(void) {
 /*
  * Saturn controllers
  */
-#define DB9_SATURN_DELAY 1
+#define DB9_SATURN_DELAY 7
 #define DB9_SATURN_ANALOG_DELAY 7
 static const int db9_saturn_byte[] = { 1, 1, 1, 2, 2, 2, 2, 2, 1 };
 static const unsigned char db9_saturn_mask[] = { 0x04, 0x01, 0x02, 0x40, 0x20, 0x10, 0x08, 0x80, 0x08 };
@@ -489,7 +489,7 @@ static void db9_timer(unsigned long private)
 				input_report_key(dev, BTN_TRIGGER, ~data & psb[i][DB9_FIRE1]);
 				input_report_key(dev, BTN_THUMB,   ~data & psb[i][DB9_FIRE2]);
 				break;
-				
+
 			case DB9_MULTI3_STICK:
 
 				data = GPIO_STATUS;
